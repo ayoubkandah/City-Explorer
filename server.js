@@ -1,15 +1,15 @@
 "use strict"
 
 let express=require("express");
-const send = require("send");
+
 
 let serv=express();
 
 require("dotenv").config();
-
+let cors=require("cors")
  const Port=process.env.PORT
 
-
+ serv.use(cors());
 
 
 //  console.log(Port)
@@ -73,3 +73,10 @@ this.longitude=data[0].lat;
 
 
 }
+
+serv.get('/',(req,res)=>{
+    res.send('home page');
+})
+serv.use('*',(req,res)=>{
+    res.status(404).send('not found page')
+})
