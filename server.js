@@ -6,9 +6,11 @@ let express=require("express");
 let serv=express();
 
 require("dotenv").config();
-let cors=require("cors")
+let cors=require("cors");
+const { query } = require("express");
+const sup =require("superagent")
  const Port=process.env.PORT
-
+// console.log(sup);
  serv.use(cors());
 
 
@@ -21,32 +23,80 @@ serv.listen(Port,()=>{
 
 serv.get("/location",Location)
 serv.get("/weather",Weather)
+serv.get("/parks",Parks)
 
+function Parks(req,res){
+ let c=req.query.search_query
+    let key = process.env.PARK_K;
+    let url =`https://developer.nps.gov/api/v1/parks?q=${c}&api_key=${key}`
+  console.log(url);
+    sup.get(url).then(parkData=>{
+
+
+let Arr=[];
+for(let e=0;e<parkData.body.data.length;e++){
+ 
+    let parkInfo=new getPark(parkData,e)
+    Arr.push(parkInfo)
+
+}        
+
+// console.log(parkData.body.data[0].url);
+res.send(Arr)
+    })
+    // console.log(Arr);
+    
+}
+function getPark(data,i){
+let Data=data.body.data
+    this.name=Data[i].fullName
+
+  
+   this.address=Data[i].addresses[0].line1+Data[i].addresses[0].city+Data[i].addresses[0].stateCode+Data[i].addresses[0].postalCode
+    this.fee=Data[i].entranceFees[0].cost
+    this.url=Data[i].url
+}
 function Weather(req,res){
 
-    let dataW=require("./Data/weather.json")
-    // console.log(dataW.data);
-    // console.log(dataW);
+    const cityN=req.query.search_query
+    let key = process.env.WETH_K;
+let url=`https://api.weatherbit.io/v2.0/forecast/daily?city=${cityN}&key=${key}`
 
-    let arr=[]
-    for(let j=0;j<dataW.data.length;j++){
-        let data=new getWeather(dataW,j)
-    arr.push(data)
+sup.get(url).then(wethData=>{
     
-    }
-
    
-    // console.log(allData.forecast);
-    console.log(arr.time);
-    res.send(arr)
+// console.log(wethData.body.data.length);
+//     }
+
+    let weather = wethData.body.data.map( function(n,i) {
+        return new getWeather(wethData,i) ;
+      });
+    res.send(weather)
+
+})
 
 }
 
+// let dataW=require("./Data/weather.json")
+    // console.log(dataW.data);
+    // console.log(dataW);
+
+   
+    
+    // }
+
+
+   
+
+
+
 function getWeather(d,x){
-  let A=d.data;
-  this.forecast=A[x].weather.description;
-  this.time=A[x].valid_date;
-  console.log(A[0].valid_date);
+
+
+ 
+  this.forecast=d.body.data[x].weather.description;
+  this.time=d.body.data[x].valid_date;
+//   console.log(A[0].valid_date);
 
 //   console.log(A[0]);
 
@@ -55,21 +105,35 @@ function getWeather(d,x){
 }
 
 function Location(req,res){
+    // http://localhost:1500/location?city=amman
+    const cityN=req.query.city
+    // console.log(cityN);
 
-    let data = require('./Data/location.json');
+    let key = process.env.LOC_K;
+    let url= `https://eu1.locationiq.com/v1/search.php?key=${key}&q=${cityN}&format=json`
+    // let data = require('./Data/location.json');
+// res.send(url)
+    sup.get(url).then(locData=>{
 
-   let fstLoc= new getLocation(data);
-//    console.log(fstLoc);
+        let fstLoc= new getLocation(cityN,locData.body[0])
+        // onsole.log(locData);c
+        // console.log(locData.body[0].display_name);
+        // console.log(fstLoc);
 res.send(fstLoc)
+
+    })
+//    let fstLoc= new getLocation(data);
+// //    console.log(fstLoc);
+// res.send(fstLoc)
+// }
 }
 
+function getLocation(city,data){
 
-function getLocation(data){
-
-this.search_query="Lynnwood";
-this.formatted_query=data[0].display_name;
-this.latitude=data[0].lat;
-this.longitude=data[0].lat;
+this.search_query=city;
+this.formatted_query=data.display_name;
+this.latitude=data.lat;
+this.longitude=data.lat;
 
 
 }
