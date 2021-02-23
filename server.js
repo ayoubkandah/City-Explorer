@@ -9,9 +9,10 @@ require("dotenv").config();
 let cors=require("cors");
 const { query } = require("express");
 const sup =require("superagent")
- const Port=process.env.PORT
+ const Port=process.env.PORT 
 // console.log(sup);
  serv.use(cors());
+ const pg =require('pg');
 
 
 //  console.log(Port)
@@ -20,16 +21,42 @@ serv.listen(Port,()=>{
 // console.log(Port);
 
 })
+// let DATABASE_URL="postgresql://ayoubk:1234@localhost:5432/ayoub"
+// client.connect()
 
+
+
+const client = new pg.Client(process.env.DATABASE_URL);
+
+// const client = new pg.Client({ connectionString: process.env.DATABASE_URL,   ssl: { rejectUnauthorized: false } });
 serv.get("/location",Location)
 serv.get("/weather",Weather)
 serv.get("/parks",Parks)
+serv.get("/add",add)
 
+function add(req,res){
+    
+    let firstName = "dddd";
+    let lastName = "aaaaa";
+    let SQL = `INSERT INTO locations VALUES ($1,$2,"2","3") RETURNING *;`;
+    let safeValues = [firstName,lastName];
+    client.query(SQL,safeValues)
+    .then((result)=>{
+        // console.log("d");
+        // res.send(result.rows);
+        // res.send('data has been inserted!!');
+    })
+
+}
 function Parks(req,res){
+
  let c=req.query.search_query
     let key = process.env.PARK_K;
     let url =`https://developer.nps.gov/api/v1/parks?q=${c}&api_key=${key}`
-  console.log(url);
+//   console.log(url);
+
+
+
     sup.get(url).then(parkData=>{
 
 
@@ -86,7 +113,7 @@ sup.get(url).then(wethData=>{
     // }
 
 
-   
+//    let index;
 
 
 
@@ -107,40 +134,115 @@ function getWeather(d,x){
 function Location(req,res){
     // http://localhost:1500/location?city=amman
     const cityN=req.query.city
+    let trigger=false;
+    // const cityN='ak'
     // console.log(cityN);
 
     let key = process.env.LOC_K;
     let url= `https://eu1.locationiq.com/v1/search.php?key=${key}&q=${cityN}&format=json`
     // let data = require('./Data/location.json');
-// res.send(url)
-    sup.get(url).then(locData=>{
+ 
+let SQL = `SELECT * FROM locations;`;
+    client.query(SQL)
+    .then(result =>{
+  
+        result.rows.forEach((element,i) => {
+            if(element.search_query==cityN){
+                // console.log("sdsadsas");
+                // index=result.rows.search_query. indexOf('dddsadsa ');
+              
+                // index=i;
+          
+      trigger=true;
+                
+            }
+        });
 
-        let fstLoc= new getLocation(cityN,locData.body[0])
+///// GET DATA FROM DATABASE
+  if(trigger){
+   
+let SQL=`SELECT * FROM locations WHERE search_query='${cityN}';`
+
+client.query(SQL)
+    .then(result =>{
+// console.log(index);
+        // console.log(cityN,result.rows[index].formatted_query);
+        // console.log(index);
+        //  console.log(cityN,result.rows[0].search_query);
+      let x=new getLocationfromDAtaB(cityN,result.rows[0])
+     
+        function getLocationfromDAtaB(city,data){
+
+            this.search_query=city;
+            this.formatted_query=data.formatted_query;
+            this.latitude=data.latitude;
+            this.longitude=data.longitude;
+            
+            
+            }
+            res.send(x)
+         
+    })
+
+
+
+
+  }else if(!trigger){
+console.log("SSdasdsa");
+    sup.get(url).then(locData=>{
+        // console.log(cityN,locData.body[0].display_name);
+    let fstLoc= new getLocation(cityN,locData.body[0])
+
+function getLocation(city,data){
+
+    this.search_query=city;
+    this.formatted_query=data.display_name;
+    this.latitude=data.lat;
+    this.longitude=data.lat;
+    
+    
+    }
+    let citynam = fstLoc.search_query;
+    let formN = fstLoc.formatted_query;
+    let lati = fstLoc.latitude;
+    let long = fstLoc.longitude;
+    let sql=`INSERT INTO locations VALUES($1,$2,$3,$4);`
+    let allRes=[citynam,formN,lati,long]
+    client.query(sql,allRes)
+    .then((result)=>{
+        // res.send(result.rows);
+        // res.send('data has been inserted!!');
+    })
+
+
+
+
+    res.send(fstLoc)
+})
+  }
+  
+    })
+
+
+
         // onsole.log(locData);c
         // console.log(locData.body[0].display_name);
         // console.log(fstLoc);
-res.send(fstLoc)
 
-    })
+
+
 //    let fstLoc= new getLocation(data);
 // //    console.log(fstLoc);
 // res.send(fstLoc)
 // }
 }
 
-function getLocation(city,data){
-
-this.search_query=city;
-this.formatted_query=data.display_name;
-this.latitude=data.lat;
-this.longitude=data.lat;
-
-
-}
 
 serv.get('/',(req,res)=>{
     res.send('home page');
 })
 serv.use('*',(req,res)=>{
     res.status(404).send('not found page')
-})
+});
+
+client.connect();
