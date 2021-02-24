@@ -14,9 +14,10 @@ const sup =require("superagent")
 serv.listen(Port,()=>{
 })
 
-const client = new pg.Client(process.env.DATABASE_URL);
+// const client = new pg.Client(process.env.DATABASE_URL);
+const client = new pg.Client({ connectionString: process.env.DATABASE_URL,   ssl: { rejectUnauthorized: false } });
 client.connect();
-// const client = new pg.Client({ connectionString: process.env.DATABASE_URL,   ssl: { rejectUnauthorized: false } });
+
 let locationData=require('./location')
 let WeatherData=require('./weather')
 let parkData=require('./park')
